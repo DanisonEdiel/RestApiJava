@@ -11,6 +11,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class FirstApi {
     @GetMapping("/hello")
     public String sayHello() {
-        return "¡Hola guasa!";
+        return "¡Hola con todos!";
     }
 }
