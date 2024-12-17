@@ -61,6 +61,14 @@ jobs:
             sudo systemctl start docker
             sudo systemctl enable docker
             sudo usermod -aG docker ec2-user
+            newgrp docker <<EOF
+            echo "Pulling the Docker image..."
+            docker stop rest-api-java || true
+            docker rm rest-api-java || true
+            docker pull ${{ secrets.DOCKER_USERNAME }}/rest-api-java:latest
+            echo "Running the Docker container..."
+            docker run -d --name rest-api-java -p 8080:8080 ${{ secrets.DOCKER_USERNAME }}/rest-api-java:latest
+            EOF
           
             echo "Pulling the Docker image..."
             docker stop rest-api-java || true
