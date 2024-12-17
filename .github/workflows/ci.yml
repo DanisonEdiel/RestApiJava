@@ -1,9 +1,9 @@
-name: CI/CD for Spring Boot with Docker
+name: CI/CD for Spring Boot with Docker and EC2 Deployment
 
 on:
   push:
     branches:
-      - main  # Ejecutar el flujo cuando se haga un push a main
+      - main
 
 jobs:
   build:
@@ -38,6 +38,35 @@ jobs:
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/rest-api-java:latest
 
-      # 6. Verificar que todo está funcionando
-      - name: Verify Docker Image
-        run: docker run -d -p 8080:8080 --name test-api ${{ secrets.DOCKER_USERNAME }}/rest-api-java:latest
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Configurar la clave SSH
+      - name: Set up SSH Key
+        uses: webfactory/ssh-agent@v0.5.4
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+
+      # 2. Desplegar en EC2
+      - name: Deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            echo "Updating EC2 instance..."
+            sudo yum update -y
+
+            echo "Installing Docker..."
+            sudo amazon-linux-extras install docker -y
+            sudo systemctl start docker
+            sudo systemctl enable docker
+            sudo usermod -aG docker ec2-user
+
+            echo "Pulling the Docker image..."
+            docker stop rest-api-java || true
+            docker rm rest-api-java || true
+            docker pull ${{ secrets.DOCKER_USERNAME }}/rest-api-java:latest
+
+            echo "Running the Docker container..."
+            docker run -d --name rest-api-java -p 8080:8080 ${{ secrets.DOCKER_USERNAME }}/rest-api-java:latest
+          EOF
