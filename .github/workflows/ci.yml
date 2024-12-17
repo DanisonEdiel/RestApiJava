@@ -54,19 +54,19 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             echo "Updating EC2 instance..."
-            sudo yum update -y
-
+            sudo dnf update -y
+          
             echo "Installing Docker..."
-            sudo amazon-linux-extras install docker -y
+            sudo dnf install -y docker
             sudo systemctl start docker
             sudo systemctl enable docker
             sudo usermod -aG docker ec2-user
-
+          
             echo "Pulling the Docker image..."
             docker stop rest-api-java || true
             docker rm rest-api-java || true
             docker pull ${{ secrets.DOCKER_USERNAME }}/rest-api-java:latest
-
+          
             echo "Running the Docker container..."
             docker run -d --name rest-api-java -p 8080:8080 ${{ secrets.DOCKER_USERNAME }}/rest-api-java:latest
           EOF
