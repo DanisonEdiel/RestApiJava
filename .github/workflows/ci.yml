@@ -1,9 +1,9 @@
-name: CI/CD for Spring Boot with Docker and EC2 Deployment
+name: CI/CD for Spring Boot with Docker
 
 on:
   push:
     branches:
-      - main
+      - main  # Ejecutar el flujo cuando se haga un push a main
 
 jobs:
   build:
@@ -37,39 +37,3 @@ jobs:
       - name: Push Docker Image to Docker Hub
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/rest-api-java:latest
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-
-    steps:
-      # 1. Configurar la clave SSH
-      - name: Set up SSH Key
-        uses: webfactory/ssh-agent@v0.5.4
-        with:
-          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
-
-      # 2. Desplegar en EC2
-      - name: Deploy to EC2
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-            echo "Updating EC2 instance..."
-            sudo yum update -y
-
-            echo "Installing required tools: Git, Docker..."
-            sudo yum install -y git docker
-            sudo systemctl start docker
-            sudo systemctl enable docker
-            sudo usermod -aG docker ec2-user
-
-            # Recargar permisos del grupo Docker
-            newgrp docker <<INNER_EOF
-              echo "Pulling the Docker image..."
-              docker stop rest-api-java || true
-              docker rm rest-api-java || true
-              docker pull ${{ secrets.DOCKER_USERNAME }}/rest-api-java:latest
-
-              echo "Running the Docker container..."
-              docker run -d --name rest-api-java -p 8080:8080 ${{ secrets.DOCKER_USERNAME }}/rest-api-java:latest
-            INNER_EOF
-          EOF
